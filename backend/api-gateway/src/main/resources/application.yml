@@ -1,0 +1,66 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: api-gateway
+  cloud:
+    gateway:
+      discovery:
+        locator:
+          enabled: true
+          lower-case-service-id: true
+      routes:
+        - id: user-service-auth
+          uri: lb://USER-SERVICE
+          predicates:
+            - Path=/api/auth/**, /api/users/**, /api/departments/**, /api/dashboard/**
+
+        - id: request-service-requests
+          uri: lb://REQUEST-SERVICE
+          predicates:
+            - Path=/api/requests/**, /api/lost-found/**
+
+        - id: booking-service-bookings
+          uri: lb://BOOKING-SERVICE
+          predicates:
+            - Path=/api/facilities/**, /api/bookings/**
+
+        - id: notification-service-alerts
+          uri: lb://NOTIFICATION-SERVICE
+          predicates:
+            - Path=/api/notifications/**, /api/activity-logs/**
+
+      globalcors:
+        cors-configurations:
+          '[/**]':
+            allowedOriginPatterns: "*"
+            allowedMethods:
+              - GET
+              - POST
+              - PUT
+              - PATCH
+              - DELETE
+              - OPTIONS
+            allowedHeaders: "*"
+            allowCredentials: true
+            maxAge: 3600
+
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_URI:http://localhost:8761/eureka/}
+    register-with-eureka: true
+    fetch-registry: true
+  instance:
+    prefer-ip-address: true
+
+jwt:
+  secret: ${JWT_SECRET:CampusConnectSecretKeyForJwtSigningMustBeAtLeast256BitsLong2026!}
+  expiration: 86400000
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,gateway
