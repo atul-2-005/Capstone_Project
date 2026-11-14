@@ -42,7 +42,7 @@ export default function NotificationDropdown() {
     try {
       await notificationApi.markAsRead(id);
       setNotifications((prev) =>
-        prev.map((n) => (n.id === id ? { ...n, read: true } : n))
+        prev.map((n) => (n.id === id ? { ...n, read: true, isRead: true } : n))
       );
       setUnreadCount((prev) => Math.max(0, prev - 1));
       toast.info('Notification marked as read');
@@ -54,7 +54,7 @@ export default function NotificationDropdown() {
   const handleMarkAllAsRead = async () => {
     try {
       await notificationApi.markAllAsRead();
-      setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+      setNotifications((prev) => prev.map((n) => ({ ...n, read: true, isRead: true })));
       setUnreadCount(0);
       toast.success('All notifications marked as read');
     } catch (err) {
@@ -63,7 +63,8 @@ export default function NotificationDropdown() {
   };
 
   const filtered = notifications.filter((n) => {
-    if (filter === 'UNREAD') return !n.read;
+    const isItemRead = n.read || n.isRead;
+    if (filter === 'UNREAD') return !isItemRead;
     return true;
   });
 
@@ -146,51 +147,54 @@ export default function NotificationDropdown() {
                 <p className="text-[11px] text-slate-400 mt-0.5">No notifications in this view.</p>
               </div>
             ) : (
-              filtered.map((item) => (
-                <div
-                  key={item.id}
-                  className={`p-3.5 hover:bg-slate-50/80 transition-colors flex items-start space-x-3 group ${
-                    !item.read ? 'bg-indigo-50/40' : ''
-                  }`}
-                >
+              filtered.map((item) => {
+                const isUnread = !(item.read || item.isRead);
+                return (
                   <div
-                    className={`mt-0.5 p-2 rounded-xl shrink-0 ${
-                      item.type === 'REQUEST_UPDATE'
-                        ? 'bg-blue-50 text-blue-600 border border-blue-100'
-                        : item.type === 'BOOKING_CONFIRMED'
-                        ? 'bg-emerald-50 text-emerald-600 border border-emerald-100'
-                        : 'bg-indigo-50 text-indigo-600 border border-indigo-100'
+                    key={item.id}
+                    className={`p-3.5 hover:bg-slate-50/80 transition-colors flex items-start space-x-3 group ${
+                      isUnread ? 'bg-indigo-50/40' : ''
                     }`}
                   >
-                    {item.type === 'REQUEST_UPDATE' ? (
-                      <Wrench className="w-3.5 h-3.5" />
-                    ) : item.type === 'BOOKING_CONFIRMED' ? (
-                      <Calendar className="w-3.5 h-3.5" />
-                    ) : (
-                      <Sparkles className="w-3.5 h-3.5" />
+                    <div
+                      className={`mt-0.5 p-2 rounded-xl shrink-0 ${
+                        item.type === 'REQUEST_UPDATE'
+                          ? 'bg-blue-50 text-blue-600 border border-blue-100'
+                          : item.type === 'BOOKING_CONFIRMED'
+                          ? 'bg-emerald-50 text-emerald-600 border border-emerald-100'
+                          : 'bg-indigo-50 text-indigo-600 border border-indigo-100'
+                      }`}
+                    >
+                      {item.type === 'REQUEST_UPDATE' ? (
+                        <Wrench className="w-3.5 h-3.5" />
+                      ) : item.type === 'BOOKING_CONFIRMED' ? (
+                        <Calendar className="w-3.5 h-3.5" />
+                      ) : (
+                        <Sparkles className="w-3.5 h-3.5" />
+                      )}
+                    </div>
+
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-bold text-slate-900 leading-tight">{item.title}</p>
+                      <p className="text-xs text-slate-600 mt-1 leading-relaxed">{item.message}</p>
+                      <span className="text-[10px] text-slate-400 mt-1.5 flex items-center font-medium">
+                        <Clock className="w-2.5 h-2.5 mr-1" />
+                        {formatTimeAgo(item.createdAt)}
+                      </span>
+                    </div>
+
+                    {isUnread && (
+                      <button
+                        onClick={(e) => handleMarkAsRead(item.id, e)}
+                        title="Mark as read"
+                        className="p-1 text-slate-300 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors shrink-0"
+                      >
+                        <Check className="w-3.5 h-3.5" />
+                      </button>
                     )}
                   </div>
-
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs font-bold text-slate-900 leading-tight">{item.title}</p>
-                    <p className="text-xs text-slate-600 mt-1 leading-relaxed">{item.message}</p>
-                    <span className="text-[10px] text-slate-400 mt-1.5 flex items-center font-medium">
-                      <Clock className="w-2.5 h-2.5 mr-1" />
-                      {formatTimeAgo(item.createdAt)}
-                    </span>
-                  </div>
-
-                  {!item.read && (
-                    <button
-                      onClick={(e) => handleMarkAsRead(item.id, e)}
-                      title="Mark as read"
-                      className="p-1 text-slate-300 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors shrink-0"
-                    >
-                      <Check className="w-3.5 h-3.5" />
-                    </button>
-                  )}
-                </div>
-              ))
+                );
+              })
             )}
           </div>
         </div>

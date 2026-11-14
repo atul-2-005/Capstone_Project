@@ -24,7 +24,9 @@ import {
   Info,
   CalendarCheck,
   Sparkles,
-  ArrowRight
+  ArrowRight,
+  Trash2,
+  Check
 } from 'lucide-react';
 
 export default function FacilitiesPage() {
@@ -49,6 +51,19 @@ export default function FacilitiesPage() {
   const [bookingError, setBookingError] = useState('');
   const [bookingSuccess, setBookingSuccess] = useState('');
   const [submittingBooking, setSubmittingBooking] = useState(false);
+
+  // Admin Add Facility Modal
+  const [showAddFacilityModal, setShowAddFacilityModal] = useState(false);
+  const [facilityForm, setFacilityForm] = useState({
+    name: '',
+    description: '',
+    location: '',
+    capacity: 50,
+    status: 'AVAILABLE',
+    bookingRules: '',
+  });
+  const [facilityError, setFacilityError] = useState('');
+  const [submittingFacility, setSubmittingFacility] = useState(false);
 
   // Bookings Lists
   const [myBookings, setMyBookings] = useState([]);
@@ -194,6 +209,64 @@ export default function FacilitiesPage() {
     }
   };
 
+  const handleApproveBooking = async (bookingId) => {
+    try {
+      await bookingApi.approve(bookingId);
+      toast.success("Booking approved successfully");
+      fetchAllBookings();
+    } catch (err) {
+      const msg = err.response?.data?.message || err.message;
+      toast.error("Failed to approve booking: " + msg);
+    }
+  };
+
+  const handleCreateFacility = async (e) => {
+    e.preventDefault();
+    setFacilityError('');
+    setSubmittingFacility(true);
+
+    try {
+      await facilityApi.create({
+        ...facilityForm,
+        capacity: parseInt(facilityForm.capacity),
+      });
+      toast.success(`Campus facility "${facilityForm.name}" created successfully!`);
+      setShowAddFacilityModal(false);
+      setFacilityForm({
+        name: '',
+        description: '',
+        location: '',
+        capacity: 50,
+        status: 'AVAILABLE',
+        bookingRules: '',
+      });
+      fetchFacilities();
+    } catch (err) {
+      const msg = err.response?.data?.message || 'Failed to create facility';
+      setFacilityError(msg);
+      toast.error(msg);
+    } finally {
+      setSubmittingFacility(false);
+    }
+  };
+
+  const handleDeleteFacility = async (facilityId, facilityName, e) => {
+    e.stopPropagation();
+    if (!window.confirm(`Are you sure you want to remove "${facilityName}" from campus facilities?`)) return;
+
+    try {
+      await facilityApi.delete(facilityId);
+      toast.success(`Facility "${facilityName}" removed.`);
+      if (selectedFacility?.id === facilityId) {
+        setSelectedFacility(null);
+      }
+      fetchFacilities();
+    } catch (err) {
+      const msg = err.response?.data?.message || err.message;
+      toast.error("Failed to delete facility: " + msg);
+    }
+  };
+
   const todayStr = new Date().toISOString().split('T')[0];
   const tomorrowDate = new Date();
   tomorrowDate.setDate(tomorrowDate.getDate() + 1);
@@ -226,53 +299,65 @@ export default function FacilitiesPage() {
           </p>
         </div>
 
-        {/* Tab Controls */}
-        <div className="flex items-center space-x-1.5 bg-slate-200/70 p-1 rounded-xl text-xs font-semibold self-start sm:self-auto">
-          <button
-            onClick={() => setActiveTab('browse')}
-            className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg transition-all ${
-              activeTab === 'browse'
-                ? 'bg-white text-indigo-700 shadow-xs font-bold'
-                : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            <CalendarDays className="w-3.5 h-3.5" />
-            <span>Browse & Book</span>
-          </button>
-          <button
-            onClick={() => setActiveTab('my-bookings')}
-            className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg transition-all ${
-              activeTab === 'my-bookings'
-                ? 'bg-white text-indigo-700 shadow-xs font-bold'
-                : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            <CalendarCheck className="w-3.5 h-3.5" />
-            <span>My Bookings</span>
-            {myBookings.length > 0 && (
-              <span className="ml-1 px-1.5 py-0.2 bg-indigo-100 text-indigo-800 rounded-full text-[10px] font-bold">
-                {myBookings.length}
-              </span>
-            )}
-          </button>
+        {/* Tab Controls & Add Facility Button for Admin */}
+        <div className="flex flex-wrap items-center gap-2">
           {role === 'ADMIN' && (
             <button
-              onClick={() => setActiveTab('all-bookings')}
+              onClick={() => setShowAddFacilityModal(true)}
+              className="inline-flex items-center px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-xs transition-colors shrink-0"
+            >
+              <Plus className="w-3.5 h-3.5 mr-1" />
+              <span>Add Facility</span>
+            </button>
+          )}
+
+          <div className="flex items-center space-x-1.5 bg-slate-200/70 p-1 rounded-xl text-xs font-semibold">
+            <button
+              onClick={() => setActiveTab('browse')}
               className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg transition-all ${
-                activeTab === 'all-bookings'
+                activeTab === 'browse'
                   ? 'bg-white text-indigo-700 shadow-xs font-bold'
                   : 'text-slate-600 hover:text-slate-900'
               }`}
             >
-              <Building2 className="w-3.5 h-3.5" />
-              <span>All Bookings (Admin)</span>
-              {allBookings.length > 0 && (
-                <span className="ml-1 px-1.5 py-0.2 bg-slate-200 text-slate-800 rounded-full text-[10px] font-bold">
-                  {allBookings.length}
+              <CalendarDays className="w-3.5 h-3.5" />
+              <span>Browse & Book</span>
+            </button>
+            <button
+              onClick={() => setActiveTab('my-bookings')}
+              className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg transition-all ${
+                activeTab === 'my-bookings'
+                  ? 'bg-white text-indigo-700 shadow-xs font-bold'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <CalendarCheck className="w-3.5 h-3.5" />
+              <span>My Bookings</span>
+              {myBookings.length > 0 && (
+                <span className="ml-1 px-1.5 py-0.2 bg-indigo-100 text-indigo-800 rounded-full text-[10px] font-bold">
+                  {myBookings.length}
                 </span>
               )}
             </button>
-          )}
+            {role === 'ADMIN' && (
+              <button
+                onClick={() => setActiveTab('all-bookings')}
+                className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg transition-all ${
+                  activeTab === 'all-bookings'
+                    ? 'bg-white text-indigo-700 shadow-xs font-bold'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <Building2 className="w-3.5 h-3.5" />
+                <span>All Bookings (Admin)</span>
+                {allBookings.length > 0 && (
+                  <span className="ml-1 px-1.5 py-0.2 bg-slate-200 text-slate-800 rounded-full text-[10px] font-bold">
+                    {allBookings.length}
+                  </span>
+                )}
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -299,6 +384,8 @@ export default function FacilitiesPage() {
                 icon={Building2}
                 title="No Facilities Available"
                 description="Campus administration has not listed any facilities for booking yet."
+                actionLabel={role === 'ADMIN' ? 'Add Campus Facility' : undefined}
+                onAction={role === 'ADMIN' ? () => setShowAddFacilityModal(true) : undefined}
               />
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -320,16 +407,27 @@ export default function FacilitiesPage() {
                         }`}>
                           <Building2 className="w-5 h-5" />
                         </div>
-                        <span
-                          className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                            f.status === 'AVAILABLE' ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'
-                          }`}
-                        >
-                          <span className={`w-1.5 h-1.5 rounded-full mr-1 ${
-                            f.status === 'AVAILABLE' ? 'bg-emerald-500' : 'bg-rose-500'
-                          }`} />
-                          {f.status}
-                        </span>
+                        <div className="flex items-center space-x-1.5">
+                          <span
+                            className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                              f.status === 'AVAILABLE' ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'
+                            }`}
+                          >
+                            <span className={`w-1.5 h-1.5 rounded-full mr-1 ${
+                              f.status === 'AVAILABLE' ? 'bg-emerald-500' : 'bg-rose-500'
+                            }`} />
+                            {f.status}
+                          </span>
+                          {role === 'ADMIN' && (
+                            <button
+                              onClick={(e) => handleDeleteFacility(f.id, f.name, e)}
+                              className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
+                              title="Delete Facility"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
                       </div>
 
                       <h3 className="font-bold text-slate-900 text-sm mt-3.5">{f.name}</h3>
@@ -625,7 +723,15 @@ export default function FacilitiesPage() {
                       <td className="px-6 py-4">
                         <StatusBadge status={b.status} />
                       </td>
-                      <td className="px-6 py-4 text-right">
+                      <td className="px-6 py-4 text-right space-x-1.5">
+                        {b.status === 'PENDING' && (
+                          <button
+                            onClick={() => handleApproveBooking(b.id)}
+                            className="px-2.5 py-1 text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg font-bold text-[11px] transition-colors"
+                          >
+                            Approve
+                          </button>
+                        )}
                         {b.status !== 'CANCELLED' && (
                           <button
                             onClick={() => handleCancelBooking(b.id)}
@@ -746,6 +852,139 @@ export default function FacilitiesPage() {
                   className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold shadow-md shadow-indigo-600/20 transition-all disabled:opacity-50"
                 >
                   {submittingBooking ? 'Validating Overlap...' : 'Confirm Reservation'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Admin Add Facility Modal */}
+      {showAddFacilityModal && role === 'ADMIN' && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 space-y-4 text-xs border border-slate-100">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div>
+                <span className="text-[10px] font-extrabold uppercase tracking-wider text-indigo-600">
+                  Campus Facilities Management
+                </span>
+                <h3 className="text-base font-bold text-slate-900">
+                  Add New Campus Facility
+                </h3>
+              </div>
+              <button
+                onClick={() => setShowAddFacilityModal(false)}
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {facilityError && (
+              <div className="bg-rose-50 border border-rose-200 text-rose-800 text-xs p-3 rounded-xl flex items-center space-x-2">
+                <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
+                <span>{facilityError}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleCreateFacility} className="space-y-3.5">
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">
+                  Facility Name <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={facilityForm.name}
+                  onChange={(e) => setFacilityForm((p) => ({ ...p, name: e.target.value }))}
+                  placeholder="e.g. Mechanical Robotics Testing Arena"
+                  className="w-full p-2.5 border border-slate-200 rounded-xl font-medium focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">
+                    Seating Capacity <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    required
+                    value={facilityForm.capacity}
+                    onChange={(e) => setFacilityForm((p) => ({ ...p, capacity: e.target.value }))}
+                    className="w-full p-2.5 border border-slate-200 rounded-xl font-medium focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Status</label>
+                  <select
+                    value={facilityForm.status}
+                    onChange={(e) => setFacilityForm((p) => ({ ...p, status: e.target.value }))}
+                    className="w-full p-2.5 border border-slate-200 rounded-xl bg-white font-medium focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  >
+                    <option value="AVAILABLE">AVAILABLE</option>
+                    <option value="MAINTENANCE">MAINTENANCE</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">
+                  Campus Location <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={facilityForm.location}
+                  onChange={(e) => setFacilityForm((p) => ({ ...p, location: e.target.value }))}
+                  placeholder="e.g. Science & Technology Block 4, Ground Floor"
+                  className="w-full p-2.5 border border-slate-200 rounded-xl font-medium focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">
+                  Facility Description <span className="text-rose-500">*</span>
+                </label>
+                <textarea
+                  rows={2}
+                  required
+                  value={facilityForm.description}
+                  onChange={(e) => setFacilityForm((p) => ({ ...p, description: e.target.value }))}
+                  placeholder="Describe technical equipment, projection screens, sound systems, etc..."
+                  className="w-full p-2.5 border border-slate-200 rounded-xl font-medium focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">
+                  Booking Rules & Requirements
+                </label>
+                <input
+                  type="text"
+                  value={facilityForm.bookingRules}
+                  onChange={(e) => setFacilityForm((p) => ({ ...p, bookingRules: e.target.value }))}
+                  placeholder="e.g. Safety goggles required. Max booking 2 hours."
+                  className="w-full p-2.5 border border-slate-200 rounded-xl font-medium focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                />
+              </div>
+
+              <div className="flex justify-end space-x-2 pt-2 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setShowAddFacilityModal(false)}
+                  className="px-4 py-2 border border-slate-200 rounded-xl font-bold text-slate-600 hover:bg-slate-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={submittingFacility}
+                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold shadow-md shadow-indigo-600/20 transition-all disabled:opacity-50"
+                >
+                  {submittingFacility ? 'Creating...' : 'Create Facility'}
                 </button>
               </div>
             </form>

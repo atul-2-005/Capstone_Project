@@ -23,7 +23,8 @@ import {
   Check,
   AlertCircle,
   X,
-  FileCheck
+  FileCheck,
+  ArrowUpRight
 } from 'lucide-react';
 
 const LIFECYCLE_STEPS = ['SUBMITTED', 'ASSIGNED', 'IN_PROGRESS', 'RESOLVED', 'CLOSED'];
@@ -52,6 +53,13 @@ export default function RequestDetailsPage() {
   const [selectedStaffId, setSelectedStaffId] = useState('');
   const [assignNotes, setAssignNotes] = useState('');
 
+  // Admin Change Priority Modal
+  const [showPriorityModal, setShowPriorityModal] = useState(false);
+  const [newPriority, setNewPriority] = useState('');
+  const [priorityReason, setPriorityReason] = useState('');
+  const [priorityError, setPriorityError] = useState('');
+  const [submittingPriority, setSubmittingPriority] = useState(false);
+
   const role = user?.role || 'STUDENT';
 
   useEffect(() => {
@@ -64,8 +72,10 @@ export default function RequestDetailsPage() {
       const res = await requestApi.getById(id);
       setRequest(res.data);
       setNewStatus(res.data.status);
+      setNewPriority(res.data.priority);
     } catch (err) {
       console.error("Failed to load request", err);
+      toast.error("Failed to load ticket details");
     } finally {
       setLoading(false);
     }
@@ -99,6 +109,7 @@ export default function RequestDetailsPage() {
       setShowAssignModal(true);
     } catch (err) {
       console.error("Failed to load staff list", err);
+      toast.error("Could not fetch technicians list");
     }
   };
 
@@ -147,30 +158,46 @@ export default function RequestDetailsPage() {
     }
   };
 
+  const handlePrioritySubmit = async (e) => {
+    e.preventDefault();
+    setPriorityError('');
+    setSubmittingPriority(true);
+
+    try {
+      await requestApi.updatePriority(id, {
+        priority: newPriority,
+        reason: priorityReason.trim() || 'Admin priority adjustment',
+      });
+      setShowPriorityModal(false);
+      toast.success(`Priority updated to ${newPriority}`);
+      fetchRequestDetails();
+    } catch (err) {
+      setPriorityError(err.response?.data?.message || 'Failed to update priority');
+    } finally {
+      setSubmittingPriority(false);
+    }
+  };
+
   if (loading) {
     return (
-      <div className="max-w-4xl mx-auto space-y-6">
-        <div className="h-10 bg-slate-200/70 rounded-xl animate-shimmer w-1/3" />
-        <div className="h-28 bg-slate-200/70 rounded-2xl animate-shimmer" />
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 h-96 bg-slate-200/70 rounded-2xl animate-shimmer" />
-          <div className="h-96 bg-slate-200/70 rounded-2xl animate-shimmer" />
-        </div>
+      <div className="space-y-6">
+        <Skeleton className="h-28 w-full rounded-2xl" />
+        <Skeleton className="h-64 w-full rounded-2xl" />
       </div>
     );
   }
 
   if (!request) {
     return (
-      <div className="card-premium p-12 text-center max-w-lg mx-auto">
-        <AlertCircle className="w-10 h-10 mx-auto mb-3 text-rose-500 stroke-[1.75]" />
-        <h3 className="text-base font-bold text-slate-800">Request Not Found</h3>
-        <p className="text-xs text-slate-500 mt-1">This ticket does not exist or you do not have permission to view it.</p>
+      <div className="card-premium p-12 text-center text-slate-500 space-y-3">
+        <AlertCircle className="w-10 h-10 mx-auto text-slate-400" />
+        <p className="text-sm font-bold text-slate-700">Service Request Not Found</p>
+        <p className="text-xs text-slate-400">The ticket reference does not exist or access is restricted.</p>
         <button
           onClick={() => navigate('/requests')}
-          className="mt-4 px-4 py-2 bg-indigo-600 text-white rounded-xl text-xs font-semibold"
+          className="mt-2 px-4 py-2 bg-indigo-600 text-white rounded-xl text-xs font-bold"
         >
-          Return to Service Requests
+          Return to Queue
         </button>
       </div>
     );
@@ -179,28 +206,36 @@ export default function RequestDetailsPage() {
   const currentStepIndex = LIFECYCLE_STEPS.indexOf(request.status);
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
-      {/* Top Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div className="flex items-center space-x-3.5">
+    <div className="space-y-6">
+      {/* Top Header Card */}
+      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 card-premium p-6">
+        <div className="flex items-start space-x-3.5">
           <button
             onClick={() => navigate('/requests')}
-            className="p-2 rounded-xl text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors"
+            className="p-2 rounded-xl text-slate-400 hover:text-slate-800 hover:bg-slate-100 transition-colors shrink-0 mt-0.5"
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
           <div>
-            <div className="flex items-center space-x-2">
-              <span className="text-sm font-extrabold text-indigo-600">{request.requestNumber}</span>
-              <StatusBadge status={request.status} />
+            <div className="flex flex-wrap items-center gap-2 mb-1.5">
+              <span className="text-xs font-mono font-extrabold text-indigo-600 bg-indigo-50 px-2.5 py-0.5 rounded-lg border border-indigo-100">
+                {request.requestNumber}
+              </span>
               <PriorityBadge priority={request.priority} />
+              <StatusBadge status={request.status} />
             </div>
-            <h1 className="text-xl font-bold text-slate-900 tracking-tight mt-1">{request.title}</h1>
+            <h1 className="text-xl font-bold text-slate-900 tracking-tight">{request.title}</h1>
+            <p className="text-xs text-slate-500 mt-1 flex items-center">
+              <MapPin className="w-3.5 h-3.5 mr-1 text-slate-400" />
+              <span>{request.location}</span>
+              <span className="mx-2">•</span>
+              <span>Submitted by {request.studentName} on {new Date(request.createdAt).toLocaleDateString()}</span>
+            </p>
           </div>
         </div>
 
         {/* Action Buttons based on role */}
-        <div className="flex items-center space-x-2.5 shrink-0">
+        <div className="flex flex-wrap items-center gap-2 shrink-0">
           {(role === 'STAFF' || role === 'ADMIN') && (
             <button
               onClick={() => {
@@ -215,13 +250,28 @@ export default function RequestDetailsPage() {
           )}
 
           {role === 'ADMIN' && (
-            <button
-              onClick={handleOpenAssignModal}
-              className="px-4 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-bold transition-all shadow-2xs flex items-center space-x-1.5"
-            >
-              <User className="w-3.5 h-3.5 text-slate-400" />
-              <span>{request.assignedStaffId ? 'Reassign Staff' : 'Assign Staff'}</span>
-            </button>
+            <>
+              <button
+                onClick={() => {
+                  setNewPriority(request.priority);
+                  setPriorityReason('');
+                  setPriorityError('');
+                  setShowPriorityModal(true);
+                }}
+                className="px-3.5 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-bold transition-all shadow-xs flex items-center space-x-1.5"
+              >
+                <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />
+                <span>Change Priority</span>
+              </button>
+
+              <button
+                onClick={handleOpenAssignModal}
+                className="px-3.5 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-bold transition-all shadow-xs flex items-center space-x-1.5"
+              >
+                <User className="w-3.5 h-3.5 text-slate-400" />
+                <span>{request.assignedStaffId ? 'Reassign Staff' : 'Assign Staff'}</span>
+              </button>
+            </>
           )}
         </div>
       </div>
@@ -570,6 +620,84 @@ export default function RequestDetailsPage() {
                   className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold shadow-sm transition-all"
                 >
                   Assign Ticket
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Admin Change Priority Modal */}
+      {showPriorityModal && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 space-y-4 text-xs border border-slate-100">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div>
+                <span className="text-[10px] font-extrabold uppercase tracking-wider text-indigo-600">
+                  Priority Management
+                </span>
+                <h3 className="text-base font-bold text-slate-900">
+                  Change Request Priority
+                </h3>
+              </div>
+              <button
+                onClick={() => setShowPriorityModal(false)}
+                className="text-slate-400 hover:text-slate-600"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {priorityError && (
+              <div className="bg-rose-50 border border-rose-200 text-rose-800 text-xs p-3 rounded-xl flex items-center space-x-2">
+                <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
+                <span>{priorityError}</span>
+              </div>
+            )}
+
+            <form onSubmit={handlePrioritySubmit} className="space-y-4">
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Priority Level</label>
+                <select
+                  value={newPriority}
+                  onChange={(e) => setNewPriority(e.target.value)}
+                  className="w-full p-2.5 border border-slate-200 rounded-xl bg-white font-medium focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                >
+                  <option value="LOW">LOW - Minor inconvenience</option>
+                  <option value="MEDIUM">MEDIUM - Standard maintenance</option>
+                  <option value="HIGH">HIGH - Urgent classroom / academic impact</option>
+                  <option value="URGENT">URGENT - Immediate safety hazard or network blackout</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">
+                  Reason for Adjustment
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={priorityReason}
+                  onChange={(e) => setPriorityReason(e.target.value)}
+                  placeholder="e.g. Escalated due to upcoming midterm exam in this lab"
+                  className="w-full p-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                />
+              </div>
+
+              <div className="flex justify-end space-x-2 pt-2 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setShowPriorityModal(false)}
+                  className="px-4 py-2 border border-slate-200 rounded-xl text-slate-600 hover:bg-slate-50 font-bold transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={submittingPriority}
+                  className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold shadow-md shadow-indigo-600/20 transition-all disabled:opacity-50"
+                >
+                  {submittingPriority ? 'Updating...' : 'Update Priority'}
                 </button>
               </div>
             </form>

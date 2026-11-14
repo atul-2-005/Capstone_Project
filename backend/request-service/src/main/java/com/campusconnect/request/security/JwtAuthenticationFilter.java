@@ -35,13 +35,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             String userIdHeader = request.getHeader("X-User-Id");
             String userRoleHeader = request.getHeader("X-User-Role");
             String userEmailHeader = request.getHeader("X-User-Email");
+            String userNameHeader = request.getHeader("X-User-Name");
 
             if (StringUtils.hasText(userIdHeader) && StringUtils.hasText(userRoleHeader)) {
                 UserContext userContext = UserContext.builder()
                         .id(Long.parseLong(userIdHeader))
                         .role(userRoleHeader)
                         .email(userEmailHeader)
-                        .name(userEmailHeader)
+                        .name(StringUtils.hasText(userNameHeader) ? userNameHeader : userEmailHeader)
                         .build();
 
                 UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(

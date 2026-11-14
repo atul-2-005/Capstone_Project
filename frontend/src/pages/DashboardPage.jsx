@@ -88,8 +88,50 @@ export default function DashboardPage() {
     setLoading(true);
     try {
       if (role === 'ADMIN') {
-        const res = await dashboardApi.getAdminStats();
-        setAdminStats(res.data);
+        const [dashRes, statsRes, bookingsRes] = await Promise.all([
+          dashboardApi.getAdminStats().catch(() => ({ data: {} })),
+          requestApi.getStats().catch(() => ({ data: {} })),
+          bookingApi.getAll().catch(() => ({ data: { content: [] } })),
+        ]);
+
+        const baseStats = dashRes.data || {};
+        const reqStats = statsRes.data || {};
+        const allBookings = bookingsRes.data?.content || bookingsRes.data || [];
+
+        // Build dynamic live category map
+        const liveCategoryMap = reqStats.byCategory && Object.keys(reqStats.byCategory).length > 0
+          ? Object.entries(reqStats.byCategory).reduce((acc, [cat, count]) => {
+              const label = cat.replace(/_/g, ' ');
+              acc[label] = count;
+              return acc;
+            }, {})
+          : baseStats.requestsByCategory || {};
+
+        // Build live status map from MySQL request count
+        const liveStatusMap = {
+          SUBMITTED: reqStats.submitted ?? baseStats.requestsByStatus?.SUBMITTED ?? 0,
+          ASSIGNED: reqStats.assigned ?? baseStats.requestsByStatus?.ASSIGNED ?? 0,
+          IN_PROGRESS: reqStats.inProgress ?? baseStats.requestsByStatus?.IN_PROGRESS ?? 0,
+          RESOLVED: reqStats.resolved ?? baseStats.requestsByStatus?.RESOLVED ?? 0,
+          CLOSED: reqStats.closed ?? baseStats.requestsByStatus?.CLOSED ?? 0,
+        };
+
+        const totalReq = reqStats.total ?? baseStats.totalRequests ?? 0;
+        const pendingReq = (reqStats.submitted ?? 0) + (reqStats.assigned ?? 0);
+        const resolvedReq = (reqStats.resolved ?? 0) + (reqStats.closed ?? 0);
+        const inProgReq = reqStats.inProgress ?? 0;
+        const activeBookings = allBookings.filter((b) => b.status === 'CONFIRMED').length;
+
+        setAdminStats({
+          ...baseStats,
+          totalRequests: totalReq,
+          pendingRequests: pendingReq,
+          resolvedRequests: resolvedReq,
+          inProgressRequests: inProgReq,
+          activeBookings: activeBookings,
+          requestsByCategory: liveCategoryMap,
+          requestsByStatus: liveStatusMap,
+        });
       } else if (role === 'STAFF') {
         const res = await requestApi.getAssignedRequests();
         setStaffAssigned(res.data || []);
@@ -178,10 +220,10 @@ export default function DashboardPage() {
           <div className="card-premium p-5 flex items-center justify-between">
             <div>
               <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Total Complaints</p>
-              <h3 className="text-2xl font-extrabold text-slate-900 mt-1">{adminStats?.totalRequests || 45}</h3>
+              <h3 className="text-2xl font-extrabold text-slate-900 mt-1">{adminStats?.totalRequests ?? 0}</h3>
               <div className="flex items-center text-[11px] text-indigo-600 font-semibold mt-1">
                 <TrendingUp className="w-3 h-3 mr-1" />
-                <span>+8.2% this week</span>
+                <span>Live Database Total</span>
               </div>
             </div>
             <div className="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center border border-indigo-100">
@@ -192,7 +234,7 @@ export default function DashboardPage() {
           <div className="card-premium p-5 flex items-center justify-between">
             <div>
               <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Pending Assignment</p>
-              <h3 className="text-2xl font-extrabold text-amber-600 mt-1">{adminStats?.pendingRequests || 15}</h3>
+              <h3 className="text-2xl font-extrabold text-amber-600 mt-1">{adminStats?.pendingRequests ?? 0}</h3>
               <div className="flex items-center text-[11px] text-amber-600 font-semibold mt-1">
                 <Clock className="w-3 h-3 mr-1" />
                 <span>Requires staff routing</span>
@@ -206,10 +248,10 @@ export default function DashboardPage() {
           <div className="card-premium p-5 flex items-center justify-between">
             <div>
               <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Resolved Tickets</p>
-              <h3 className="text-2xl font-extrabold text-emerald-600 mt-1">{adminStats?.resolvedRequests || 18}</h3>
+              <h3 className="text-2xl font-extrabold text-emerald-600 mt-1">{adminStats?.resolvedRequests ?? 0}</h3>
               <div className="flex items-center text-[11px] text-emerald-600 font-semibold mt-1">
                 <CheckCircle2 className="w-3 h-3 mr-1" />
-                <span>Avg SLA: 4.2 hours</span>
+                <span>Verified by technicians</span>
               </div>
             </div>
             <div className="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center border border-emerald-100">
@@ -220,10 +262,10 @@ export default function DashboardPage() {
           <div className="card-premium p-5 flex items-center justify-between">
             <div>
               <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Facility Bookings</p>
-              <h3 className="text-2xl font-extrabold text-sky-600 mt-1">{adminStats?.activeBookings || 8}</h3>
+              <h3 className="text-2xl font-extrabold text-sky-600 mt-1">{adminStats?.activeBookings ?? 0}</h3>
               <div className="flex items-center text-[11px] text-sky-600 font-semibold mt-1">
                 <CalendarDays className="w-3 h-3 mr-1" />
-                <span>Across 5 campus halls</span>
+                <span>Active confirmed slots</span>
               </div>
             </div>
             <div className="w-12 h-12 bg-sky-50 text-sky-600 rounded-xl flex items-center justify-center border border-sky-100">

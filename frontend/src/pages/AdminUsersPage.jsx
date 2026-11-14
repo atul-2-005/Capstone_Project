@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { userApi, departmentApi } from '../services/api';
+import { userApi, departmentApi, authApi } from '../services/api';
 import { useToast } from '../context/ToastContext';
 import { TableSkeleton } from '../components/Skeleton';
 import EmptyState from '../components/EmptyState';
@@ -19,7 +19,9 @@ import {
   GraduationCap,
   Wrench,
   CheckCircle2,
-  Sparkles
+  Sparkles,
+  UserPlus,
+  Plus
 } from 'lucide-react';
 
 export default function AdminUsersPage() {
@@ -37,6 +39,19 @@ export default function AdminUsersPage() {
   const [editDeptId, setEditDeptId] = useState('');
   const [editStatus, setEditStatus] = useState('');
   const [savingEdit, setSavingEdit] = useState(false);
+
+  // Add User Modal
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [addForm, setAddForm] = useState({
+    name: '',
+    email: '',
+    password: '',
+    role: 'STUDENT',
+    departmentId: '',
+    phone: '',
+  });
+  const [addError, setAddError] = useState('');
+  const [submittingAdd, setSubmittingAdd] = useState(false);
 
   useEffect(() => {
     fetchUsers();
@@ -104,6 +119,40 @@ export default function AdminUsersPage() {
     }
   };
 
+  const handleAddUserSubmit = async (e) => {
+    e.preventDefault();
+    setAddError('');
+    setSubmittingAdd(true);
+
+    try {
+      await authApi.register({
+        name: addForm.name.trim(),
+        email: addForm.email.trim(),
+        password: addForm.password,
+        role: addForm.role,
+        departmentId: addForm.departmentId ? parseInt(addForm.departmentId) : null,
+        phone: addForm.phone.trim(),
+      });
+      toast.success(`User "${addForm.name}" enrolled successfully!`);
+      setShowAddModal(false);
+      setAddForm({
+        name: '',
+        email: '',
+        password: '',
+        role: 'STUDENT',
+        departmentId: '',
+        phone: '',
+      });
+      fetchUsers();
+    } catch (err) {
+      const msg = err.response?.data?.message || 'Failed to enroll user';
+      setAddError(msg);
+      toast.error(msg);
+    } finally {
+      setSubmittingAdd(false);
+    }
+  };
+
   const filteredUsers = users.filter((u) => {
     if (roleFilter && u.role !== roleFilter) return false;
     if (statusFilter && u.accountStatus !== statusFilter) return false;
@@ -124,16 +173,26 @@ export default function AdminUsersPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <div className="flex items-center space-x-2.5">
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">University User Directory</h1>
-          <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-100">
-            RBAC Access Control
-          </span>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <div className="flex items-center space-x-2.5">
+            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">University User Directory</h1>
+            <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-100">
+              RBAC Access Control
+            </span>
+          </div>
+          <p className="text-xs text-slate-500 mt-1">
+            Administer student enrollments, faculty/staff rosters, technical departments, and account authorizations.
+          </p>
         </div>
-        <p className="text-xs text-slate-500 mt-1">
-          Administer student enrollments, faculty/staff rosters, technical departments, and account authorizations.
-        </p>
+
+        <button
+          onClick={() => setShowAddModal(true)}
+          className="inline-flex items-center px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-md shadow-indigo-600/20 transition-all shrink-0 hover:translate-y-[-1px] active:scale-95"
+        >
+          <UserPlus className="w-4 h-4 mr-1.5" />
+          <span>Enroll New User</span>
+        </button>
       </div>
 
       {/* KPI Cards Row */}
@@ -234,7 +293,9 @@ export default function AdminUsersPage() {
           <EmptyState
             icon={Users}
             title="No Users Found"
-            description="No user accounts matched your search or filter parameters. Try clearing filters."
+            description="No user accounts matched your search or filter parameters. Try clearing filters or enroll a new user."
+            actionLabel="Enroll User"
+            onAction={() => setShowAddModal(true)}
           />
         ) : (
           <div className="overflow-x-auto">
@@ -455,6 +516,144 @@ export default function AdminUsersPage() {
                   className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold shadow-md shadow-indigo-600/20 transition-all disabled:opacity-50"
                 >
                   {savingEdit ? 'Saving...' : 'Save Changes'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Add User Modal */}
+      {showAddModal && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 space-y-4 text-xs border border-slate-100">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div>
+                <span className="text-[10px] font-extrabold uppercase tracking-wider text-indigo-600">
+                  New Enrollment
+                </span>
+                <h3 className="text-base font-bold text-slate-900">
+                  Enroll University User
+                </h3>
+              </div>
+              <button
+                onClick={() => setShowAddModal(false)}
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {addError && (
+              <div className="bg-rose-50 border border-rose-200 text-rose-800 text-xs p-3 rounded-xl flex items-center space-x-2">
+                <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
+                <span>{addError}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleAddUserSubmit} className="space-y-3.5">
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">
+                  Full Name <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={addForm.name}
+                  onChange={(e) => setAddForm((p) => ({ ...p, name: e.target.value }))}
+                  placeholder="e.g. Dr. Julian Vance"
+                  className="w-full p-2.5 border border-slate-200 rounded-xl font-medium focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">
+                    Email Address <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="email"
+                    required
+                    value={addForm.email}
+                    onChange={(e) => setAddForm((p) => ({ ...p, email: e.target.value }))}
+                    placeholder="user@campusconnect.edu"
+                    className="w-full p-2.5 border border-slate-200 rounded-xl font-medium focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">
+                    Initial Password <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="password"
+                    required
+                    value={addForm.password}
+                    onChange={(e) => setAddForm((p) => ({ ...p, password: e.target.value }))}
+                    placeholder="Min. 6 chars"
+                    className="w-full p-2.5 border border-slate-200 rounded-xl font-medium focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Role <span className="text-rose-500">*</span></label>
+                  <select
+                    value={addForm.role}
+                    onChange={(e) => setAddForm((p) => ({ ...p, role: e.target.value }))}
+                    className="w-full p-2.5 border border-slate-200 rounded-xl bg-white font-medium focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  >
+                    <option value="STUDENT">STUDENT</option>
+                    <option value="STAFF">STAFF</option>
+                    <option value="ADMIN">ADMIN</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Contact Phone</label>
+                  <input
+                    type="text"
+                    value={addForm.phone}
+                    onChange={(e) => setAddForm((p) => ({ ...p, phone: e.target.value }))}
+                    placeholder="+1 555-0199"
+                    className="w-full p-2.5 border border-slate-200 rounded-xl font-medium focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  />
+                </div>
+              </div>
+
+              {addForm.role === 'STAFF' && (
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Department</label>
+                  <select
+                    value={addForm.departmentId}
+                    onChange={(e) => setAddForm((p) => ({ ...p, departmentId: e.target.value }))}
+                    className="w-full p-2.5 border border-slate-200 rounded-xl bg-white font-medium focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  >
+                    <option value="">Select Department</option>
+                    {departments.map((d) => (
+                      <option key={d.id} value={d.id}>
+                        {d.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              <div className="flex justify-end space-x-2 pt-2 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setShowAddModal(false)}
+                  className="px-4 py-2 border border-slate-200 rounded-xl font-bold text-slate-600 hover:bg-slate-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={submittingAdd}
+                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold shadow-md shadow-indigo-600/20 transition-all disabled:opacity-50"
+                >
+                  {submittingAdd ? 'Enrolling...' : 'Enroll User'}
                 </button>
               </div>
             </form>

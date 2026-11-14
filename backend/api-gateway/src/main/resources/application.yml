@@ -14,22 +14,22 @@ spring:
         - id: user-service-auth
           uri: lb://USER-SERVICE
           predicates:
-            - Path=/api/auth/**, /api/users/**, /api/departments/**, /api/dashboard/**
+            - Path=/api/auth/**,/api/users/**,/api/departments/**,/api/dashboard/**
 
         - id: request-service-requests
           uri: lb://REQUEST-SERVICE
           predicates:
-            - Path=/api/requests/**, /api/lost-found/**
+            - Path=/api/requests/**,/api/lost-found/**
 
         - id: booking-service-bookings
           uri: lb://BOOKING-SERVICE
           predicates:
-            - Path=/api/facilities/**, /api/bookings/**
+            - Path=/api/facilities/**,/api/bookings/**
 
         - id: notification-service-alerts
           uri: lb://NOTIFICATION-SERVICE
           predicates:
-            - Path=/api/notifications/**, /api/activity-logs/**
+            - Path=/api/notifications/**,/api/activity-logs/**
 
       globalcors:
         cors-configurations:

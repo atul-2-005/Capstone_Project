@@ -20,7 +20,8 @@ import {
   CheckCircle2,
   Package,
   User,
-  Clock
+  Clock,
+  Edit2
 } from 'lucide-react';
 
 export default function LostFoundPage() {
@@ -33,7 +34,7 @@ export default function LostFoundPage() {
   const [itemTypeFilter, setItemTypeFilter] = useState('ALL'); // 'ALL' | 'LOST' | 'FOUND'
   const [search, setSearch] = useState('');
 
-  // Modal
+  // Create Modal
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [formData, setFormData] = useState({
     title: '',
@@ -46,6 +47,20 @@ export default function LostFoundPage() {
   });
   const [modalError, setModalError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+
+  // Edit Modal
+  const [editingItem, setEditingItem] = useState(null);
+  const [editFormData, setEditFormData] = useState({
+    title: '',
+    description: '',
+    category: 'Electronics',
+    itemType: 'LOST',
+    location: '',
+    imageUrl: '',
+    contactInfo: '',
+  });
+  const [editError, setEditError] = useState('');
+  const [submittingEdit, setSubmittingEdit] = useState(false);
 
   useEffect(() => {
     fetchItems();
@@ -95,6 +110,39 @@ export default function LostFoundPage() {
       toast.error(msg);
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleOpenEdit = (item) => {
+    setEditingItem(item);
+    setEditFormData({
+      title: item.title,
+      description: item.description,
+      category: item.category,
+      itemType: item.itemType,
+      location: item.location,
+      imageUrl: item.imageUrl || '',
+      contactInfo: item.contactInfo || '',
+    });
+    setEditError('');
+  };
+
+  const handleEditSubmit = async (e) => {
+    e.preventDefault();
+    setEditError('');
+    setSubmittingEdit(true);
+
+    try {
+      await lostFoundApi.update(editingItem.id, editFormData);
+      toast.success("Item listing updated successfully!");
+      setEditingItem(null);
+      fetchItems();
+    } catch (err) {
+      const msg = err.response?.data?.message || 'Failed to update listing';
+      setEditError(msg);
+      toast.error(msg);
+    } finally {
+      setSubmittingEdit(false);
     }
   };
 
@@ -319,6 +367,13 @@ export default function LostFoundPage() {
                         </button>
                       )}
                       <button
+                        onClick={() => handleOpenEdit(item)}
+                        className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                        title="Edit Listing"
+                      >
+                        <Edit2 className="w-3.5 h-3.5" />
+                      </button>
+                      <button
                         onClick={() => handleDelete(item.id)}
                         className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
                         title="Delete listing"
@@ -486,6 +541,120 @@ export default function LostFoundPage() {
                   className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold shadow-md shadow-indigo-600/20 transition-all disabled:opacity-50"
                 >
                   {submitting ? 'Posting...' : 'Post Listing'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Modal */}
+      {editingItem && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 space-y-4 border border-slate-100 text-xs">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div>
+                <span className="text-[10px] font-extrabold uppercase tracking-wider text-indigo-600">
+                  Update Listing
+                </span>
+                <h3 className="text-base font-bold text-slate-900">
+                  Edit Item: {editingItem.title}
+                </h3>
+              </div>
+              <button
+                onClick={() => setEditingItem(null)}
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {editError && (
+              <div className="bg-rose-50 border border-rose-200 text-rose-700 text-xs p-3 rounded-xl flex items-center space-x-2">
+                <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
+                <span>{editError}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleEditSubmit} className="space-y-3.5">
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Item Title <span className="text-rose-500">*</span></label>
+                <input
+                  type="text"
+                  required
+                  value={editFormData.title}
+                  onChange={(e) => setEditFormData((p) => ({ ...p, title: e.target.value }))}
+                  className="w-full p-2.5 border border-slate-200 rounded-xl font-medium focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Category</label>
+                  <select
+                    value={editFormData.category}
+                    onChange={(e) => setEditFormData((p) => ({ ...p, category: e.target.value }))}
+                    className="w-full p-2.5 border border-slate-200 rounded-xl bg-white font-medium focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  >
+                    <option value="Electronics">Electronics</option>
+                    <option value="Academic Supplies">Academic Supplies</option>
+                    <option value="Personal Belongings">Personal Belongings</option>
+                    <option value="Cards & IDs">Cards & IDs</option>
+                    <option value="Apparel & Bags">Apparel & Bags</option>
+                    <option value="Keys">Keys</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Location <span className="text-rose-500">*</span></label>
+                  <input
+                    type="text"
+                    required
+                    value={editFormData.location}
+                    onChange={(e) => setEditFormData((p) => ({ ...p, location: e.target.value }))}
+                    className="w-full p-2.5 border border-slate-200 rounded-xl font-medium focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">
+                  Description <span className="text-rose-500">*</span>
+                </label>
+                <textarea
+                  rows={3}
+                  required
+                  value={editFormData.description}
+                  onChange={(e) => setEditFormData((p) => ({ ...p, description: e.target.value }))}
+                  className="w-full p-2.5 border border-slate-200 rounded-xl font-medium focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Contact Phone / Email</label>
+                <input
+                  type="text"
+                  value={editFormData.contactInfo}
+                  onChange={(e) => setEditFormData((p) => ({ ...p, contactInfo: e.target.value }))}
+                  className="w-full p-2.5 border border-slate-200 rounded-xl font-medium focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                />
+              </div>
+
+              <div className="flex justify-end space-x-2 pt-2 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setEditingItem(null)}
+                  className="px-4 py-2 border border-slate-200 rounded-xl text-slate-600 hover:bg-slate-50 font-bold transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={submittingEdit}
+                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold shadow-md shadow-indigo-600/20 transition-all disabled:opacity-50"
+                >
+                  {submittingEdit ? 'Saving...' : 'Save Changes'}
                 </button>
               </div>
             </form>
