@@ -10,10 +10,6 @@ import RequestsListPage from '../pages/RequestsListPage';
 import CreateRequestPage from '../pages/CreateRequestPage';
 import RequestDetailsPage from '../pages/RequestDetailsPage';
 import FacilitiesPage from '../pages/FacilitiesPage';
-import LostFoundPage from '../pages/LostFoundPage';
-import AdminUsersPage from '../pages/AdminUsersPage';
-import AdminDepartmentsPage from '../pages/AdminDepartmentsPage';
-import AdminActivitiesPage from '../pages/AdminActivitiesPage';
 
 const ProtectedRoute = ({ children, allowedRoles }) => {
   const { user, isAuthenticated, loading } = useAuth();
@@ -75,33 +71,6 @@ export default function AppRoutes() {
         <Route path="requests/new" element={<CreateRequestPage />} />
         <Route path="requests/:id" element={<RequestDetailsPage />} />
         <Route path="facilities" element={<FacilitiesPage />} />
-        <Route path="lost-found" element={<LostFoundPage />} />
-
-        {/* Admin Specific Routes */}
-        <Route
-          path="admin/users"
-          element={
-            <ProtectedRoute allowedRoles={['ADMIN']}>
-              <AdminUsersPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="admin/departments"
-          element={
-            <ProtectedRoute allowedRoles={['ADMIN']}>
-              <AdminDepartmentsPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="admin/activities"
-          element={
-            <ProtectedRoute allowedRoles={['ADMIN']}>
-              <AdminActivitiesPage />
-            </ProtectedRoute>
-          }
-        />
       </Route>
 
       {/* Catch-all */}

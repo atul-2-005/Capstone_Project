@@ -1,5 +1,5 @@
 import React from 'react';
-import { LucideIcon } from 'lucide-react';
+import { Inbox } from "lucide-react";
 
 export default function EmptyState({
   icon: Icon,

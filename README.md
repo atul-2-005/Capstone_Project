@@ -1,227 +1,173 @@
 # CampusConnect – Smart University Service Management System
-> Enterprise-grade, full-stack microservices university service operations platform built with Spring Boot 3.x, React 18, Spring Cloud Gateway, Netflix Eureka, MySQL, MongoDB, and Redis.
-
-![CampusConnect Banner](https://images.unsplash.com/photo-1541339907198-e08756dedf3f?q=80&w=1200&auto=format&fit=crop)
+> **Full Stack Development II (FSD-II) Practical Examination Project**  
+> Built with **React.js (Frontend)**, **Java Spring Boot (Single Monolithic Backend)**, **MySQL (Database)**, and **JWT Authentication**.
 
 ---
 
-## 1. Project Overview & Features
+## 1. Project Overview
 
-**CampusConnect** is a centralized university service and facility operations platform designed for universities, colleges, students, maintenance departments, and campus administrators.
+**CampusConnect** is a clean, practical university service management web application designed for college practical examinations and demonstrations. It connects students and campus administrators to streamline service complaints and facility bookings.
 
-### Core Capabilities by Role:
-
-| Role | Key Capabilities |
-|---|---|
-| **STUDENT** | Submit complaints & requests (`REQ-2026-XXXX`), track lifecycle progress, book campus facilities (seminar halls, computing labs, study rooms) with atomic double-booking prevention, report & search lost/found items, receive real-time alerts, communicate with assigned staff via comment feeds. |
-| **STAFF** | Workboard of assigned departmental requests, status lifecycle updates (`SUBMITTED` $\to$ `ASSIGNED` $\to$ `IN_PROGRESS` $\to$ `RESOLVED`), mandatory resolution documentation, facility schedules. |
-| **ADMIN** | Executive dashboard with analytics & KPIs (Recharts), ticket assignment & priority override, student/staff user management, department administration, facility catalog management, lost & found moderation, and system audit logs. |
+### Implemented Features (Exactly 7 Modules):
+1. **Student Registration & Login**: Students can create an account and log in securely with JWT authentication and BCrypt password encryption.
+2. **Student Dashboard**: Shows summary cards for total, pending, in-progress, and resolved complaints, recent complaint status, and quick complaint submission.
+3. **Submit Campus Complaints**: Students can submit complaints with Title, Category (Hostel, Classroom, Electrical, Plumbing, IT, Transport, Other), Priority (Low, Medium, High, Urgent), Location, and Description.
+4. **View Personal Complaints & Status**: Students can view their own complaints, search/filter, and track real-time status updates (`SUBMITTED`, `ASSIGNED`, `IN_PROGRESS`, `RESOLVED`, `CLOSED`).
+5. **Admin Login & Dashboard**: Administrators can log in, view university-wide metrics, charts by status/category, and recent complaints requiring action.
+6. **Admin View, Assign & Update Complaints**: Administrators can view all student complaints, assign technicians/staff members, and update complaint status with resolution remarks.
+7. **Basic Facility Booking**: Students can browse campus facilities (Seminar Hall, Computer Lab, Sports Court, Library Room) and book available time slots; Administrators can view and approve bookings.
 
 ---
 
 ## 2. Technology Stack
 
-### Frontend
-- **Framework**: React 18 with Vite
-- **Styling**: Tailwind CSS (Professional SaaS palette: Deep Navy `#0f172a`, Indigo `#4f46e5`, Emerald `#10b981`)
-- **Routing**: React Router DOM v6 with role-based protected routes
-- **HTTP Client**: Axios with automatic JWT interceptors and 401 handling
-- **Visualizations**: Recharts (Bar charts, line charts, pie charts)
-- **Icons**: Lucide React
-- **Forms**: React Hook Form with validation
-
-### Backend Microservices
-- **Runtimes**: Java 17 LTS / JDK 24, Spring Boot 3.3.4
-- **Security**: Spring Security 6 with JWT (io.jsonwebtoken JJWT 0.12.5) and BCrypt password encryption
-- **Data & ORM**: Spring Data JPA, Hibernate, Spring Data MongoDB
-- **Caching**: Redis Cache (`@Cacheable`, `@CacheEvict`)
-- **API Documentation**: Springdoc OpenAPI 3 / Swagger UI
-- **Service Discovery**: Netflix Eureka Discovery Server
-- **API Gateway**: Spring Cloud Gateway with reactive CORS and claim injection
-
-### Persistence & Storage
-- **MySQL 8.0**: Primary ACID relational database for Users, Departments, Service Requests, Facilities, and Bookings.
-- **MongoDB 6.0**: Flexible document database for request comments, in-app notifications, and audit activity streams.
-- **Redis 7.0**: High-speed memory cache for Admin dashboard statistics, department rosters, and facility lists.
+- **Frontend**: React.js 18, Vite, Tailwind CSS, Lucide React icons, Axios, Recharts
+- **Backend**: Java 17+, Spring Boot 3.3.4 (Single Unified Backend Application)
+  - `spring-boot-starter-web` (REST APIs)
+  - `spring-boot-starter-data-jpa` & Hibernate (MySQL ORM)
+  - `spring-boot-starter-security` (Role-Based Access Control)
+  - `io.jsonwebtoken` JJWT (JWT Token Authentication)
+- **Database**: MySQL (Single relational database with auto table generation)
+- **Architecture**: Client-Server Monolith (No Docker, No Eureka, No Redis, No MongoDB required)
 
 ---
 
-## 3. Microservices Architecture & Port Mapping
+## 3. Pre-Seeded Demonstration Accounts
 
-```mermaid
-flowchart TD
-    Client["React Frontend Client (:3000 / :5173)"]
-    Gateway["Spring Cloud Gateway (:8080)"]
-    Eureka["Netflix Eureka Discovery Server (:8761)"]
+When the Spring Boot backend starts for the first time on MySQL, it automatically populates sample accounts, campus facilities, and initial complaints into the database:
 
-    subgraph Microservices ["Microservices Layer"]
-        UserService["User Service (:8081)\nAuth, Roles, Departments"]
-        RequestService["Request Service (:8082)\nComplaints, Comments, Lost & Found"]
-        BookingService["Booking Service (:8083)\nFacilities & Anti-Overlap Booking"]
-        NotificationService["Notification Service (:8084)\nAlerts & Audit Logs"]
-    end
-
-    subgraph Databases ["Persistence Layer"]
-        MySQL[("MySQL Database (:3306)")]
-        MongoDB[("MongoDB Database (:27017)")]
-        Redis[("Redis Cache (:6379)")]
-    end
-
-    Client -->|REST API /api/*| Gateway
-    Gateway --> Eureka
-    UserService --> Eureka
-    RequestService --> Eureka
-    BookingService --> Eureka
-    NotificationService --> Eureka
-
-    Gateway -->|/api/auth/**, /api/users/**| UserService
-    Gateway -->|/api/requests/**, /api/lost-found/**| RequestService
-    Gateway -->|/api/facilities/**, /api/bookings/**| BookingService
-    Gateway -->|/api/notifications/**, /api/activity-logs/**| NotificationService
-
-    UserService --> MySQL
-    UserService --> Redis
-    RequestService --> MySQL
-    RequestService --> MongoDB
-    BookingService --> MySQL
-    BookingService --> Redis
-    NotificationService --> MongoDB
-```
-
-| Service | Port | Primary Database | Swagger / OpenAPI |
+| Role | Email Address | Default Password | Description |
 |---|---|---|---|
-| **Eureka Discovery Server** | `8761` | N/A | http://localhost:8761 |
-| **API Gateway** | `8080` | N/A | http://localhost:8080/actuator/gateway/routes |
-| **User Service** | `8081` | MySQL (`campusconnect_user`) | http://localhost:8081/swagger-ui.html |
-| **Request Service** | `8082` | MySQL & MongoDB | http://localhost:8082/swagger-ui.html |
-| **Booking Service** | `8083` | MySQL (`campusconnect_booking`) | http://localhost:8083/swagger-ui.html |
-| **Notification Service** | `8084` | MongoDB (`campusconnect_notifications`) | http://localhost:8084/swagger-ui.html |
-| **React Frontend Client** | `3000` (Docker) / `5173` (Vite dev) | N/A | http://localhost:3000 |
+| **STUDENT** | `student1@campusconnect.edu` | `Student@123` | Pre-seeded student with complaints & bookings |
+| **ADMIN** | `admin@campusconnect.edu` | `Admin@123` | Campus administrator with full management rights |
+| **STAFF** | `staff.it@campusconnect.edu` | `Staff@123` | IT Support technician |
+
+> **Tip for Viva/Exam**: On the login page, you can simply click the **"1-Click Demo Evaluation"** buttons (`Student`, `Admin`, or `Staff`) to log in immediately without typing passwords!
 
 ---
 
-## 4. Default Demo Seed Credentials
+## 4. Simple Windows VS Code Startup Instructions
 
-The database auto-initializes with realistic sample users. A convenient **"1-Click Demo Evaluation"** button bar is also available on the Login screen!
+### Prerequisites
+1. **Java JDK 17 or higher** installed (`java -version`).
+2. **Node.js 18 or higher** installed (`node -v`).
+3. **MySQL Server** installed and running on default port `3306` (e.g., via MySQL Workbench, XAMPP, or standalone MySQL service).
 
-| Role | Email | Password | Department / Description |
+---
+
+### Step 1: Verify MySQL Database Connection
+Open `backend/src/main/resources/application.properties` and verify your local MySQL username and password:
+```properties
+spring.datasource.url=jdbc:mysql://localhost:3306/campusconnect?createDatabaseIfNotExist=true&useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+spring.datasource.username=root
+spring.datasource.password=root
+```
+*(Change `spring.datasource.password=root` to your MySQL root password if different. Spring Boot will automatically create the `campusconnect` database and all tables on startup).*
+
+---
+
+### Step 2: Open Project in VS Code
+1. Open VS Code.
+2. Click **File > Open Folder...** and select `Full_Stack_Project`.
+
+---
+
+### Step 3: Run the Spring Boot Backend
+
+#### Method A (Inside VS Code GUI - Recommended):
+1. In VS Code Explorer, open `backend/src/main/java/com/campusconnect/CampusConnectApplication.java`.
+2. Click the **Run** button right above `public static void main(String[] args)` (or press `F5`).
+3. The backend starts on **http://localhost:8080**.
+
+#### Method B (Using VS Code Terminal):
+1. Open a new terminal in VS Code (`Ctrl + ` `~`).
+2. Run:
+   ```powershell
+   cd backend
+   mvn spring-boot:run
+   ```
+
+---
+
+### Step 4: Run the React Frontend
+
+1. Open a second terminal tab in VS Code.
+2. Run:
+   ```powershell
+   cd frontend
+   npm install
+   npm run dev
+   ```
+3. Open your browser and navigate to: **http://localhost:5173**
+
+---
+
+## 5. MySQL Database Structure
+
+Spring Boot automatically generates the following normalized tables in MySQL:
+
+1. **`users`**:
+   - `id` (PK, Auto-increment)
+   - `name`, `email` (Unique), `password` (BCrypt encoded)
+   - `role` (`STUDENT`, `ADMIN`, `STAFF`)
+   - `department`, `phone`, `active`, `created_at`
+2. **`complaints`**:
+   - `id` (PK, Auto-increment)
+   - `request_number` (Unique, e.g., `REQ-2026-0001`)
+   - `title`, `description`, `category`, `priority`, `status`
+   - `location`, `student_id`, `student_name`, `assigned_staff`, `resolution_notes`, `created_at`, `updated_at`
+3. **`facilities`**:
+   - `id` (PK, Auto-increment)
+   - `name`, `description`, `location`, `capacity`, `status`, `image_url`
+4. **`bookings`**:
+   - `id` (PK, Auto-increment)
+   - `facility_id`, `facility_name`, `student_id`, `student_name`
+   - `booking_date`, `start_time`, `end_time`, `purpose`, `status`, `created_at`
+
+---
+
+## 6. REST API Endpoints Reference
+
+| HTTP Method | API Endpoint | Description | Access |
 |---|---|---|---|
-| **ADMIN** | `admin@campusconnect.edu` | `Admin@123` | System Administrator (Dr. Eleanor Vance) |
-| **STAFF** | `staff.it@campusconnect.edu` | `Staff@123` | IT Support Lead (Marcus Chen) |
-| **STAFF** | `staff.maintenance@campusconnect.edu` | `Staff@123` | Campus Maintenance Supervisor (Robert Miller) |
-| **STAFF** | `staff.electrical@campusconnect.edu` | `Staff@123` | Chief Electrician (Aisha Patel) |
-| **STUDENT** | `student1@campusconnect.edu` | `Student@123` | Alex Rivera |
-| **STUDENT** | `student2@campusconnect.edu` | `Student@123` | Sophia Martinez |
-| **STUDENT** | `student3@campusconnect.edu` to `student10@...` | `Student@123` | Students 3 through 10 |
+| `POST` | `/api/auth/register` | Register a new student account | Public |
+| `POST` | `/api/auth/login` | Authenticate and obtain JWT token | Public |
+| `GET` | `/api/users/me` | Fetch authenticated user profile | Authenticated |
+| `GET` | `/api/users/staff` | Fetch technicians list for assignment | Admin / Staff |
+| `POST` | `/api/requests` | Submit a new complaint | Student |
+| `GET` | `/api/requests` | View complaints (All for Admin, personal for Student) | Authenticated |
+| `GET` | `/api/requests/my` | View logged-in student's complaints | Student |
+| `GET` | `/api/requests/{id}` | View detailed complaint info | Authenticated |
+| `PATCH` | `/api/requests/{id}/status` | Update complaint status & resolution notes | Admin / Staff |
+| `PATCH` | `/api/requests/{id}/assign` | Assign complaint to a technician/staff | Admin |
+| `GET` | `/api/requests/stats` | Fetch summary count metrics | Authenticated |
+| `GET` | `/api/facilities` | List all available campus facilities | Public / Auth |
+| `POST` | `/api/facilities` | Create new campus facility | Admin |
+| `DELETE` | `/api/facilities/{id}` | Delete a facility | Admin |
+| `POST` | `/api/bookings` | Book a facility slot | Student |
+| `GET` | `/api/bookings` | List all bookings | Admin |
+| `GET` | `/api/bookings/my` | List student's own bookings | Student |
+| `PATCH` | `/api/bookings/{id}/cancel` | Cancel an eligible booking | Student / Admin |
+| `PATCH` | `/api/bookings/{id}/approve` | Approve a booking | Admin |
+| `GET` | `/api/dashboard/admin` | Fetch admin dashboard analytics & charts | Admin |
 
 ---
 
-## 5. Quick Start Execution Guide
+## 7. College Viva / Examination Q&A Guide
 
-### Option A: Complete One-Command Launch (Docker Compose)
-Prerequisites: Docker and Docker Compose installed.
+When demonstrating this project during your practical exam, use these answers:
 
-```bash
-# 1. Clone or navigate to the repository
-cd c:\Users\admin\Full_Stack_Project
+* **Q: How does authentication work?**  
+  *A:* "When the student or admin logs in, Spring Security verifies the credentials and `JwtUtil` issues a signed JSON Web Token (JWT) containing the user ID, email, and role. The React client stores this token in `localStorage` and Axios sends it in the `Authorization: Bearer <token>` header on every subsequent API call. The backend `JwtFilter` intercepts requests and validates the token before executing controller methods."
 
-# 2. Start all microservices, databases, Redis, Gateway, and Frontend
-docker compose up --build -d
+* **Q: How are passwords secured?**  
+  *A:* "Passwords are never saved in plain text. Spring Security's `BCryptPasswordEncoder` hashes passwords with salting before saving them in the MySQL `users` table."
 
-# 3. View status of all running containers
-docker compose ps
-```
-The application will be live at:
-- Frontend: **http://localhost:3000**
-- API Gateway: **http://localhost:8080**
-- Eureka Dashboard: **http://localhost:8761**
+* **Q: How does the React frontend communicate with the backend?**  
+  *A:* "The React application runs on port `5173` and the Spring Boot backend runs on port `8080`. Vite's development server proxies all `/api` requests to `http://localhost:8080`, avoiding Cross-Origin Resource Sharing (CORS) complications."
 
----
+* **Q: How does complaint assignment and status tracking work?**  
+  *A:* "When a student submits a complaint, its status defaults to `SUBMITTED`. The Admin logs in, views the complaint in the queue, and assigns it to a staff technician (updating the status to `ASSIGNED`). When the technician starts work, the status changes to `IN_PROGRESS`. Once fixed, the technician records resolution notes and marks it `RESOLVED`."
 
-### Option B: Local Developer Launch
-
-#### 1. Start Infrastructure
-Run MySQL (3306), MongoDB (27017), and Redis (6379), or run them via Docker:
-```bash
-docker compose up -d mysql mongodb redis
-```
-
-#### 2. Start Microservices in Order
-```bash
-# Terminal 1: Discovery Server
-cd backend/discovery-server
-mvn spring-boot:run
-
-# Terminal 2: API Gateway
-cd backend/api-gateway
-mvn spring-boot:run
-
-# Terminal 3: User Service
-cd backend/user-service
-mvn spring-boot:run
-
-# Terminal 4: Request Service
-cd backend/request-service
-mvn spring-boot:run
-
-# Terminal 5: Booking Service
-cd backend/booking-service
-mvn spring-boot:run
-
-# Terminal 6: Notification Service
-cd backend/notification-service
-mvn spring-boot:run
-```
-
-#### 3. Start Frontend Client
-```bash
-cd frontend
-npm install
-npm run dev
-```
-Open **http://localhost:5173** in your browser.
-
----
-
-## 6. Testing
-
-### Run Backend Unit & Integration Tests (JUnit 5, Mockito, MockMvc)
-```bash
-cd backend
-mvn test
-```
-Tests included:
-- `AuthServiceTest`: User registration and existing account validation.
-- `ServiceRequestServiceTest`: Request creation and mandatory resolution notes check.
-- `BookingServiceTest`: Anti-overlap validation throwing `OverlappingBookingException`.
-- `NotificationServiceTest`: Alert generation and unread counter badge calculation.
-
-### Run Frontend Tests
-```bash
-cd frontend
-npm test
-```
-
----
-
-## 7. Anti-Double-Booking Architecture
-
-A critical highlight of CampusConnect is mathematical overlap prevention for campus facilities:
-- When a student attempts to reserve a slot $[S_{\text{new}}, E_{\text{new}}]$, the backend executes an atomic check:
-  $$\text{COUNT}(b) \quad \text{where} \quad b.startTime < E_{\text{new}} \quad \text{AND} \quad b.endTime > S_{\text{new}}$$
-- If $\text{COUNT} > 0$, the request is rejected with `409 CONFLICT` and an explanatory message.
-- Overlap checks are executed inside a serializable database transaction to guarantee zero race conditions.
-
----
-
-## 8. Continuous Integration & Delivery (CI/CD)
-
-The repository includes a production-style GitHub Actions pipeline (`.github/workflows/ci.yml`) that triggers on every push and pull request:
-1. **Frontend CI**: Dependency caching, linting, Vitest suite, and Vite production bundle compilation.
-2. **Backend CI**: JDK 17 setup, Maven dependency caching, JUnit 5 & Mockito test suite execution, and JAR packaging.
-3. **Containerization**: Docker Compose configuration validation and multi-service image build testing.
-
----
-
-## 9. Authors & Academic Acknowledgement
-Developed for university-level **Full Stack Development II (FSD-II)** capstone demonstration, adhering to modern software engineering standards, cloud-native microservices design, and clean architecture principles.
+* **Q: How does facility booking avoid overlapping conflicts?**  
+  *A:* "In `BookingService.java`, before saving a new booking, the application queries MySQL for existing active bookings on that facility for the requested date. If the requested time slot is already taken, an exception is thrown, preventing double bookings."

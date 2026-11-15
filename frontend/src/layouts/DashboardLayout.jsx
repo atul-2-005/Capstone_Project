@@ -51,27 +51,22 @@ export default function DashboardLayout() {
   }, []);
 
   const studentLinks = [
-    { name: 'Student Overview', path: '/dashboard', icon: LayoutDashboard },
-    { name: 'My Service Requests', path: '/requests', icon: ClipboardList },
-    { name: 'Reserve Facilities', path: '/facilities', icon: CalendarDays },
-    { name: 'Lost & Found Hub', path: '/lost-found', icon: Search },
+    { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
+    { name: 'Submit Complaint', path: '/requests/new', icon: PlusCircle },
+    { name: 'My Complaints', path: '/requests', icon: ClipboardList },
+    { name: 'Facility Booking', path: '/facilities', icon: CalendarDays },
   ];
 
   const staffLinks = [
-    { name: 'Technician Desk', path: '/dashboard', icon: LayoutDashboard },
-    { name: 'Assigned Workboard', path: '/requests', icon: ClipboardList },
+    { name: 'Staff Dashboard', path: '/dashboard', icon: LayoutDashboard },
+    { name: 'Assigned Complaints', path: '/requests', icon: ClipboardList },
     { name: 'Campus Facilities', path: '/facilities', icon: CalendarDays },
-    { name: 'Lost & Found Registry', path: '/lost-found', icon: Search },
   ];
 
   const adminLinks = [
-    { name: 'Executive Overview', path: '/dashboard', icon: LayoutDashboard },
-    { name: 'Service Requests', path: '/requests', icon: ClipboardList },
+    { name: 'Admin Dashboard', path: '/dashboard', icon: LayoutDashboard },
+    { name: 'All Complaints', path: '/requests', icon: ClipboardList },
     { name: 'Campus Facilities', path: '/facilities', icon: CalendarDays },
-    { name: 'User Management', path: '/admin/users', icon: Users },
-    { name: 'Departments', path: '/admin/departments', icon: Building2 },
-    { name: 'Lost & Found Moderation', path: '/lost-found', icon: Search },
-    { name: 'System Audit Logs', path: '/admin/activities', icon: Activity },
   ];
 
   const navLinks = role === 'ADMIN' ? adminLinks : role === 'STAFF' ? staffLinks : studentLinks;
